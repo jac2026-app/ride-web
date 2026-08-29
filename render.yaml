@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: rideweb-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGIN
+        value: https://jac2026-app.github.io

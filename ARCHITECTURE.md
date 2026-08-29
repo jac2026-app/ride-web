@@ -146,6 +146,22 @@ via `curl` per `server/README.md`.
   `index.html` and the `ALLOWED_ORIGIN` CORS setting in `server/.env` — both
   must be updated together when the domains are finalized.
 
+### Current live deployment
+
+- **Frontend**: GitHub Pages, served straight from the `main` branch root of
+  this repo — `https://jac2026-app.github.io/ride-web/`.
+- **Backend**: `render.yaml` at the repo root is a Render Blueprint
+  (`rootDir: server`, `npm install` / `npm start`) so Render can deploy
+  `server/` directly from this GitHub repo with no extra config beyond
+  connecting the repo. `ALLOWED_ORIGIN` is pre-set to the GitHub Pages
+  origin above.
+  - **Caveat**: Render's free tier has an ephemeral filesystem — every
+    deploy or restart wipes `server/data/db.json`, so stored users/rides
+    do not survive a redeploy. Fine for a demo; move to a real database
+    (see gaps below) before relying on this for real bookings.
+- `index.html`'s `API_BASE` must point at the Render service's public URL
+  once it's deployed — update it there and re-push to go live end-to-end.
+
 ## Known gaps / likely next steps
 
 (Carried over from `server/README.md`, confirmed against the code.)
