@@ -3,6 +3,7 @@ services:
     name: rideweb-api
     runtime: node
     rootDir: server
+        plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
