@@ -61,13 +61,15 @@ admin page later that calls this endpoint — happy to build that next if useful
 
 ## Deploying this
 
-This is a plain Node app, so it runs on most Node-friendly hosts:
-- **Render** or **Railway** — easiest, free tiers available, just connect the repo
-- **A VPS** (e.g. DigitalOcean) — run it with a process manager like `pm2`
-- **Not** typical shared hosting (like GoDaddy/Bluehost cPanel hosting) — those usually only serve static files, not Node servers. Your `index.html` can still live there; the API needs a Node-capable host.
+The plan is **Google Cloud Run**, in the same Google project as the website
+(Firebase Hosting, `ride-web-6e097`). Secrets (`ADMIN_KEY`,
+`GMAIL_APP_PASSWORD`) go in Google Secret Manager, never in the code.
+
+Cloud Run doesn't keep files between restarts, so `data/db.json` must be
+replaced with a real database (Firestore) before taking real bookings.
 
 ## Next steps worth considering
 
-- Swap the JSON file storage for a real database once you have real traffic (Postgres via a host like Render or Supabase is a solid free option)
-- Add email/SMS notifications when a ride request comes in (e.g. via Twilio for texts)
+- Swap the JSON file storage for Firestore before real traffic
+- Add SMS notifications when a ride request comes in (email is done — see `notify.js`; SMS needs a provider like Twilio plus US carrier registration)
 - Add a simple dispatcher dashboard page that calls `GET /api/rides` and lets you update ride status

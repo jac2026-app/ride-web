@@ -152,7 +152,7 @@ via `curl` per `server/README.md`.
 
 - **Frontend**: any static host (the README calls out that typical shared
   cPanel hosting works fine here).
-- **Backend**: needs a Node-capable host (Render/Railway/VPS) — explicitly
+- **Backend**: needs a Node-capable host (planned: Google Cloud Run) — explicitly
   *not* compatible with static-only hosting. `server/data/db.json` lives on
   local disk, so the backend host must provide persistent (not ephemeral)
   storage across deploys/restarts, and horizontal scaling is not supported
@@ -172,9 +172,8 @@ via `curl` per `server/README.md`.
     stops working now that the file lives in `public/`.
 - **Backend**: not hosted yet — runs locally with `npm start` in `server/`.
   Planned: Google Cloud Run, with secrets in Secret Manager and bookings in
-  Firestore. `render.yaml` is left over from an earlier Render plan and is
-  unused.
-  - Cloud Run (like Render's free tier) has an ephemeral filesystem, so
+  Firestore.
+  - Cloud Run has an ephemeral filesystem, so
     `server/data/db.json` must be replaced with Firestore before real
     bookings.
 - `public/index.html`'s `API_BASE` and the server's `ALLOWED_ORIGIN` must be
