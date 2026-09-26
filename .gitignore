@@ -1,0 +1,8 @@
+# Firebase local cache and logs
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Never commit secrets or service account keys
+.env
+*-service-account*.json

@@ -1,6 +1,7 @@
 // routes/rides.js
 const express = require('express');
 const { readDb, writeDb } = require('../db');
+const { notifyNewRide } = require('../notify');
 
 const router = express.Router();
 
@@ -54,6 +55,10 @@ router.post('/', (req, res) => {
 
     db.rides.push(ride);
     writeDb(db);
+
+    // Email the owner in the background. The booking is already saved, so a
+    // mail problem must not turn into an error for the customer.
+    notifyNewRide(ride).catch(err => console.error('Ride notification failed:', err.message));
 
     return res.status(201).json({
       success: true,

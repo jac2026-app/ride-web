@@ -6,18 +6,20 @@ parts, connected only over HTTP:
 
 ```
 ┌─────────────────────┐        fetch()        ┌──────────────────────────┐
-│   index.html         │  ───────────────────▶ │   server/ (Express API)  │
+│  public/index.html   │  ───────────────────▶ │   server/ (Express API)  │
 │   static frontend     │   JSON over HTTPS      │                          │
-│   (any static host)   │ ◀───────────────────  │   server/data/db.json    │
+│  (Firebase Hosting)   │ ◀───────────────────  │   server/data/db.json    │
 └─────────────────────┘                        └──────────────────────────┘
 ```
 
 There is no build step, bundler, or framework on either side — plain HTML/CSS/JS
 on the frontend, plain Express on the backend.
 
-## Frontend — `index.html`
+## Frontend — `public/index.html`
 
-A single self-contained HTML file (styles and script inline, no external JS
+Everything under `public/` is what Firebase Hosting publishes, and nothing
+else — keep secrets and server code out of this folder. A single
+self-contained HTML file (styles and script inline, no external JS
 dependencies besides Google Fonts). Sections, top to bottom:
 
 - **Header/nav** — sticky nav with mobile hamburger menu.
@@ -34,7 +36,7 @@ dependencies besides Google Fonts). Sections, top to bottom:
 - **Footer**.
 
 SEO/meta: Open Graph, Twitter card, and `LimousineService` JSON-LD structured
-data in `<head>`, plus root `robots.txt` and `sitemap.xml` pointing at
+data in `<head>`, plus `public/robots.txt` and `public/sitemap.xml` pointing at
 `https://www.austinluxurysuv.com/`.
 
 ### Frontend ↔ backend wiring
@@ -66,11 +68,12 @@ Express app (CommonJS, no TypeScript, no build step).
 server/
   server.js          entrypoint: middleware, rate limiting, route mounting
   db.js              file-backed JSON persistence
+  notify.js          emails the owner about each new ride (nodemailer + Gmail)
   routes/
     auth.js          POST /api/register, POST /api/login
     rides.js          POST /api/rides, GET /api/rides, PATCH /api/rides/:id
   data/db.json        the "database" (gitignored, created on first run)
-  .env.example        PORT, ALLOWED_ORIGIN, ADMIN_KEY
+  .env.example        PORT, ALLOWED_ORIGIN, ADMIN_KEY, GMAIL_*, SERVE_FRONTEND
 ```
 
 ### Request pipeline (`server.js`)
@@ -83,7 +86,19 @@ server/
    `/api/register`, `/api/login`, `/api/rides`.
 5. `GET /api/health` — liveness check.
 6. Route mounts: `authRoutes` at `/api`, `rideRoutes` at `/api/rides`.
-7. Catch-all `404` for unmatched `/api/*`.
+7. Local testing only: when `SERVE_FRONTEND=true`, serves the three files in
+   `public/` at `http://localhost:3000/` (an explicit allow-list — never the
+   whole project folder, which contains `server/.env`).
+8. Catch-all `404` for unmatched `/api/*`.
+
+### Notifications — `notify.js`
+
+After a ride is saved, `notifyNewRide()` emails the details to `NOTIFY_EMAIL`
+(defaults to `GMAIL_USER`) using a Gmail App Password from `.env`. It runs in
+the background: an email failure is logged but never fails the booking. With
+no `GMAIL_*` settings, notifications are skipped with a startup warning.
+Emails are plain text and line breaks are stripped from the subject, so
+customer input can't inject HTML or email headers.
 
 ### Persistence — `db.js`
 
@@ -146,21 +161,24 @@ via `curl` per `server/README.md`.
   `index.html` and the `ALLOWED_ORIGIN` CORS setting in `server/.env` — both
   must be updated together when the domains are finalized.
 
-### Current live deployment
+### Current deployment
 
-- **Frontend**: GitHub Pages, served straight from the `main` branch root of
-  this repo — `https://jac2026-app.github.io/ride-web/`.
-- **Backend**: `render.yaml` at the repo root is a Render Blueprint
-  (`rootDir: server`, `npm install` / `npm start`) so Render can deploy
-  `server/` directly from this GitHub repo with no extra config beyond
-  connecting the repo. `ALLOWED_ORIGIN` is pre-set to the GitHub Pages
-  origin above.
-  - **Caveat**: Render's free tier has an ephemeral filesystem — every
-    deploy or restart wipes `server/data/db.json`, so stored users/rides
-    do not survive a redeploy. Fine for a demo; move to a real database
-    (see gaps below) before relying on this for real bookings.
-- `index.html`'s `API_BASE` must point at the Render service's public URL
-  once it's deployed — update it there and re-push to go live end-to-end.
+- **Frontend**: Firebase Hosting, project `ride-web-6e097` (`firebase.json`,
+  `.firebaserc`). Publishes `public/` only, with security headers
+  (HSTS, `X-Frame-Options: DENY`, `nosniff`, referrer policy).
+  - Preview: `firebase hosting:channel:deploy test --expires 7d`
+  - Live: `firebase deploy --only hosting` → `https://ride-web-6e097.web.app`
+  - The old GitHub Pages site served `index.html` from the repo root and
+    stops working now that the file lives in `public/`.
+- **Backend**: not hosted yet — runs locally with `npm start` in `server/`.
+  Planned: Google Cloud Run, with secrets in Secret Manager and bookings in
+  Firestore. `render.yaml` is left over from an earlier Render plan and is
+  unused.
+  - Cloud Run (like Render's free tier) has an ephemeral filesystem, so
+    `server/data/db.json` must be replaced with Firestore before real
+    bookings.
+- `public/index.html`'s `API_BASE` and the server's `ALLOWED_ORIGIN` must be
+  updated together once the API has a public URL.
 
 ## Known gaps / likely next steps
 
@@ -168,9 +186,13 @@ via `curl` per `server/README.md`.
 
 - Swap `db.json` for a real database before real traffic / multi-instance
   deployment.
-- No SMS/email notification on new ride requests (Twilio suggested).
+- Owner gets an email per ride request; no SMS yet (would need a provider
+  like Twilio plus US 10DLC / toll-free registration). Customers get no
+  email — the ride form doesn't collect one.
+- Phone number on the site is still the placeholder `(512) 704-4145`.
+- The "privacy policy" link in the Privacy section points to `#`.
 - No dispatcher dashboard UI — `GET/PATCH /api/rides` are API-only today.
 - `/api/login` is implemented but unused by the frontend — either wire up a
   login flow and session/token handling, or treat it as not-yet-integrated.
-- Fleet gallery photos are placeholders (`fleetData` in `index.html`) pending
+- Fleet gallery photos are placeholders (`fleetData` in `public/index.html`) pending
   real vehicle images.
